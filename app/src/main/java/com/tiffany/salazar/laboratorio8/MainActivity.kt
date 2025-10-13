@@ -3,87 +3,107 @@ package com.tiffany.salazar.laboratorio8
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TopAppBar
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.paging.PagingData
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import androidx.paging.compose.collectAsLazyPagingItems
-import com.tiffany.salazar.laboratorio8.ui.theme.Laboratorio8Theme
-import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.flatMapLatest
-import com.tiffany.salazar.laboratorio8.ui.theme.Laboratorio8Theme
+import com.tiffany.salazar.laboratorio8.di.ServiceLocator
+import com.tiffany.salazar.laboratorio8.ui.DetailsScreen
+import com.tiffany.salazar.laboratorio8.ui.PhotoGrid
+import com.tiffany.salazar.laboratorio8.viewmodel.DetailsViewModel
+import com.tiffany.salazar.laboratorio8.viewmodel.DetailsViewModelFactory
+import com.tiffany.salazar.laboratorio8.viewmodel.HomeViewModel
+import com.tiffany.salazar.laboratorio8.viewmodel.HomeViewModelFactory
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+
+        // Inyección de dependencias manual
+        val repository = ServiceLocator.provideRepository(this)
+        val homeFactory = HomeViewModelFactory(repository)
+        val detailsFactory = DetailsViewModelFactory(repository)
+
         setContent {
-            Laboratorio8Theme {
-                // Suponiendo que tienes un Factory para inyectar el repositorio
-                // La inicialización de 'repository' se hace arriba como placeholder
-                val homeViewModel: HomeViewModel = viewModel(factory = HomeViewModelFactory(repository))
-                HomeScreen(viewModel = homeViewModel)
+            val navController = rememberNavController()
+            MaterialTheme {
+                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                    NavHost(navController = navController, startDestination = "home") {
+                        composable("home") {
+                            val vm = ViewModelProvider(this@MainActivity, homeFactory)[HomeViewModel::class.java]
+                            HomeScreenHost(vm = vm, onPhotoClick = { id -> navController.navigate("details/$id") })
+                        }
+                        composable(
+                            route = "details/{photoId}",
+                            arguments = listOf(navArgument("photoId") { type = NavType.StringType })
+                        ) { backStackEntry ->
+                            val id = backStackEntry.arguments?.getString("photoId") ?: ""
+                            val vm = ViewModelProvider(this@MainActivity, detailsFactory)[DetailsViewModel::class.java]
+                            // Cargar datos solo si no se han cargado ya para este ID
+                            LaunchedEffect(id) {
+                                vm.loadById(id)
+                            }
+                            DetailsScreen(viewModel = vm)
+                        }
+                    }
+                }
             }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(viewModel: HomeViewModel) {
-    // Usamos 'by' para delegar y obtener el valor directamente
-    val searchQuery by viewModel.searchQuery.collectAsState()
+fun HomeScreenHost(vm: HomeViewModel, onPhotoClick: (String) -> Unit) {
+    val query by vm.query.collectAsState()
+    val items = vm.photos.collectAsLazyPagingItems()
+    val coroutineScope = rememberCoroutineScope()
 
     Scaffold(
         topBar = {
-            HomeTopAppBar(onProfileClick = { /* Navegar a Perfil */ })
+            TopAppBar(
+                title = { Text("Fotos") },
+                actions = {
+                    IconButton(onClick = { /* Navegar a perfil */ }) {
+                        Icon(imageVector = Icons.Default.AccountCircle, contentDescription = "Perfil")
+                    }
+                }
+            )
         }
     ) { innerPadding ->
         Column(modifier = Modifier.padding(innerPadding)) {
-            SearchBar(
-                query = searchQuery,
-                onQueryChanged = { viewModel.onQueryChanged(it) }
+            TextField(
+                value = query,
+                onValueChange = { vm.setQuery(it) },
+                label = { Text("Buscar por autor") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp)
             )
-            // Aquí irían las búsquedas recientes
-            // RecentSearches( ... )
-
-            PhotoGrid(photos = viewModel.photos)
+            PhotoGrid(
+                items = items,
+                onPhotoClick = onPhotoClick,
+                onToggleFavorite = { photo ->
+                    coroutineScope.launch {
+                        vm.toggleFavorite(photo)
+                        items.refresh() // Refresca la lista para mostrar el cambio de favorito
+                    }
+                }
+            )
         }
-    }
-}
-
-// Preview para ver el diseño en el editor
-@Preview(showBackground = true)
-@Composable
-fun DefaultPreview() {
-    Laboratorio8Theme {
-        // Para el preview, necesitamos un ViewModel falso
-        val fakeViewModel = HomeViewModel(Any())
-        HomeScreen(viewModel = fakeViewModel)
     }
 }

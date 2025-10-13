@@ -1,17 +1,15 @@
-package com.tiffany.salazar.laboratorio8
+package com.tiffany.salazar.laboratorio8.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import com.tiffany.salazar.laboratorio8.data.PhotoRepository // Importa la interfaz
 
-class HomeViewModelFactory(private val repository: Any) : ViewModelProvider.Factory {
+class HomeViewModelFactory(private val repository: PhotoRepository) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        // Primero, verifica si la clase es HomeViewModel
         if (modelClass.isAssignableFrom(HomeViewModel::class.java)) {
-            // Si lo es, crea una instancia y la devuelve
             @Suppress("UNCHECKED_CAST")
             return HomeViewModel(repository) as T
         }
-        // Si no, lanza una excepción
         throw IllegalArgumentException("Unknown ViewModel class")
     }
 }
