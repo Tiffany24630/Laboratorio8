@@ -1,47 +1,131 @@
-package com.tiffany.salazar.laboratorio8.data
+package com.tiffany.salazar.laboratorio8.repository
 
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
 import androidx.paging.PagingData
+import androidx.paging.map
+import com.tiffany.salazar.laboratorio8.data.Photo
+import com.tiffany.salazar.laboratorio8.db.PhotoDao
+import com.tiffany.salazar.laboratorio8.db.RecentQueryDao
+import com.tiffany.salazar.laboratorio8.model.RecentQuery
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import com.tiffany.salazar.laboratorio8.network.PhotoApi
 
-// --- INTERFAZ ---
 interface PhotoRepository {
     fun getPhotos(query: String): Flow<PagingData<Photo>>
     suspend fun getPhotoById(photoId: String): Photo?
     suspend fun updatePhoto(photo: Photo)
+    suspend fun addRecentQuery(query: String)
+    suspend fun getRecentQueries(limit: Int): List<String>
+    suspend fun searchPhotosFromNetwork(query: String, page: Int): List<Photo>
 }
 
-// --- IMPLEMENTACIÓN (con datos de ejemplo) ---
-class PhotoRepositoryImpl : PhotoRepository {
-
-    // Simula una base de datos en memoria para el ejemplo
-    private val photoCache = mutableListOf(
-        Photo("1", "Autor A", 1080, 1920, "https://picsum.photos/id/1/400/600", 100, false),
-        Photo("2", "Autor B", 1920, 1080, "https://picsum.photos/id/2/400/600", 250, true),
-        Photo("3", "Autor C", 800, 600, "https://picsum.photos/id/3/400/600", 50, false)
-    )
+class PhotoRepositoryImpl(
+    private val photoDao: PhotoDao,
+    private val recentQueryDao: RecentQueryDao,
+    private val photoApi: PhotoApi
+) : PhotoRepository {
 
     override fun getPhotos(query: String): Flow<PagingData<Photo>> {
-        // En una implementación real, aquí usarías Pager con Room y RemoteMediator.
-        // Para este ejemplo, simplemente devolvemos los datos cacheados.
-        val filteredList = if (query.isBlank()) {
-            photoCache
-        } else {
-            photoCache.filter { it.author?.contains(query, ignoreCase = true) == true }
+        val normalizedQuery = if (query.isBlank()) "popular" else query.trim().lowercase()
+
+        return Pager(
+            config = PagingConfig(
+                pageSize = 20,
+                enablePlaceholders = false
+            ),
+            pagingSourceFactory = { photoDao.pagingSourceForQuery(normalizedQuery) }
+        ).flow.map { pagingData ->
+            pagingData.map { photoEntity ->
+                Photo(
+                    id = photoEntity.id,
+                    author = photoEntity.author,
+                    width = photoEntity.width,
+                    height = photoEntity.height,
+                    thumbUrl = photoEntity.thumbUrl,
+                    fullUrl = photoEntity.fullUrl,
+                    likes = photoEntity.likes,
+                    isFavorite = photoEntity.isFavorite,
+                    queryKey = photoEntity.queryKey,
+                    pageIndex = photoEntity.pageIndex,
+                    updatedAt = photoEntity.updatedAt
+                )
+            }
         }
-        return flowOf(PagingData.from(filteredList))
     }
 
     override suspend fun getPhotoById(photoId: String): Photo? {
-        // Busca en la caché. En una app real, buscarías en Room y luego en la API.
-        return photoCache.find { it.id == photoId }
+        return photoDao.getPhotoById(photoId)?.let { photoEntity ->
+            Photo(
+                id = photoEntity.id,
+                author = photoEntity.author,
+                width = photoEntity.width,
+                height = photoEntity.height,
+                thumbUrl = photoEntity.thumbUrl,
+                fullUrl = photoEntity.fullUrl,
+                likes = photoEntity.likes,
+                isFavorite = photoEntity.isFavorite,
+                queryKey = photoEntity.queryKey,
+                pageIndex = photoEntity.pageIndex,
+                updatedAt = photoEntity.updatedAt
+            )
+        }
     }
 
     override suspend fun updatePhoto(photo: Photo) {
-        // Actualiza la foto en la caché. En una app real, actualizarías la base de datos de Room.
-        val index = photoCache.indexOfFirst { it.id == photo.id }
-        if (index != -1) {
-            photoCache[index] = photo
+        val photoEntity = com.tiffany.salazar.laboratorio8.model.PhotoEntity(
+            id = photo.id,
+            author = photo.author,
+            width = photo.width,
+            height = photo.height,
+            thumbUrl = photo.thumbUrl,
+            fullUrl = photo.fullUrl,
+            likes = photo.likes,
+            isFavorite = photo.isFavorite,
+            queryKey = photo.queryKey,
+            pageIndex = photo.pageIndex,
+            updatedAt = photo.updatedAt
+        )
+        photoDao.update(photoEntity)
+    }
+
+    override suspend fun addRecentQuery(query: String) {
+        if (query.isNotBlank()) {
+            recentQueryDao.upsert(RecentQuery(query = query.trim().lowercase()))
         }
+    }
+
+    override suspend fun getRecentQueries(limit: Int): List<String> {
+        return recentQueryDao.getRecent(limit).map { it.query }
+    }
+
+    override suspend fun searchPhotosFromNetwork(query: String, page: Int): List<Photo> {
+        val response = if (query == "popular") {
+            photoApi.getPopularPhotos(page = page)
+        } else {
+            photoApi.searchPhotos(query = query, page = page)
+        }
+
+        return response.photos.map { pexelsPhoto ->
+            Photo(
+                id = pexelsPhoto.id.toString(),
+                author = pexelsPhoto.photographer,
+                width = pexelsPhoto.width,
+                height = pexelsPhoto.height,
+                thumbUrl = pexelsPhoto.src.medium,
+                fullUrl = pexelsPhoto.src.large,
+                likes = if (pexelsPhoto.liked) 1 else 0,
+                isFavorite = false,
+                queryKey = if (query == "popular") "popular" else query,
+                pageIndex = page,
+                updatedAt = System.currentTimeMillis()
+            )
+        }
+    }
+
+    override suspend fun getPhotoCountForQuery(query: String): Int {
+        val normalizedQuery = if (query.isBlank()) "popular" else query.trim().lowercase()
+        return photoDao.getPhotoCountForQuery(normalizedQuery)
     }
 }

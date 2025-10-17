@@ -1,38 +1,21 @@
-package com.tiffany.salazar.laboratorio8 // Asegúrate que el package sea correcto
+package com.tiffany.salazar.laboratorio8.viewmodel
 
-// --- IMPORTACIONES CORREGIDAS ---
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.flow.Flow // <-- SOLUCIÓN 1: Importar Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
-
-// Esta interfaz debería estar en su propio archivo (ej. data/PhotoRepository.kt)
-// para evitar redefiniciones.
-interface PhotoRepository {
-    fun getPhotos(query: String): Flow<PagingData<Photo>>
-    suspend fun getPhotoByIdFromDb(photoId: String): Flow<Photo?>
-    suspend fun getPhotoByIdFromApi(photoId: String): Photo?
-    suspend fun insertPhoto(photo: Photo)
-    suspend fun updatePhoto(photo: Photo)
-}
-
-// Esta clase de datos debería estar en su propio archivo (ej. data/Photo.kt)
-// La he añadido aquí temporalmente para que el código compile.
-data class Photo(
-    val id: String,
-    val author: String,
-    // ... otros campos
-    val isFavorite: Boolean // <-- SOLUCIÓN 2: Asegúrate que el campo exista
-)
+import com.tiffany.salazar.laboratorio8.data.Photo
+import com.tiffany.salazar.laboratorio8.repository.PhotoRepository
 
 class DetailsViewModel(
-    private val photoRepository: PhotoRepository,
-    private val photoId: String
+    private val repository: PhotoRepository,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
+
+    private val photoId: String = savedStateHandle["photoId"] ?: ""
 
     private val _photoDetails = MutableStateFlow<Photo?>(null)
     val photoDetails: StateFlow<Photo?> = _photoDetails.asStateFlow()
@@ -44,32 +27,40 @@ class DetailsViewModel(
         loadPhotoDetails()
     }
 
+    fun loadById(id: String) {
+        if (id != photoId) {
+            // Recargar si el ID cambió
+            loadPhotoDetails()
+        }
+    }
+
     private fun loadPhotoDetails() {
         viewModelScope.launch {
             _isLoading.value = true
+            try {
+                // 1. Intentar cargar desde la base de datos local
+                var photo = repository.getPhotoById(photoId)
 
-            // Aquí el compilador ya puede inferir el tipo
-            var photo: Photo? = photoRepository.getPhotoByIdFromDb(photoId).firstOrNull()
+                // 2. Si no existe localmente, aquí podrías intentar cargar desde la API
+                // y luego guardar en la base de datos
+                // Por simplicidad, en esta implementación solo cargamos desde la DB
 
-            if (photo == null) {
-                photo = photoRepository.getPhotoByIdFromApi(photoId)
-                photo?.let {
-                    photoRepository.insertPhoto(it)
-                }
+                _photoDetails.value = photo
+            } catch (e: Exception) {
+                // Manejar error
+                e.printStackTrace()
+            } finally {
+                _isLoading.value = false
             }
-
-            _photoDetails.value = photo
-            _isLoading.value = false
         }
     }
 
     fun toggleFavorite() {
         _photoDetails.value?.let { currentPhoto ->
-            // La copia ahora funcionará porque el campo isFavorite existe
             val updatedPhoto = currentPhoto.copy(isFavorite = !currentPhoto.isFavorite)
             _photoDetails.value = updatedPhoto
             viewModelScope.launch {
-                photoRepository.updatePhoto(updatedPhoto)
+                repository.updatePhoto(updatedPhoto)
             }
         }
     }

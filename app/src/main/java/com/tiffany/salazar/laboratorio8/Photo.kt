@@ -9,7 +9,11 @@ data class Photo(
     val author: String? = "Desconocido",
     val width: Int? = 0,
     val height: Int? = 0,
-    val url: String,
+    val thumbUrl: String,
+    val fullUrl: String,
     val likes: Int? = 0,
-    var isFavorite: Boolean = false
+    var isFavorite: Boolean = false,
+    val queryKey: String? = null,
+    val pageIndex: Int = 0,
+    val updatedAt: Long = System.currentTimeMillis()
 )

@@ -3,7 +3,6 @@ package com.tiffany.salazar.laboratorio8.model
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
-// Entidad Photo extendida para soportar cache por query y paginado
 @Entity(tableName = "photos")
 data class PhotoEntity(
     @PrimaryKey val id: String,
