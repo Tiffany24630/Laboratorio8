@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -13,7 +14,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.collectAsLazyPagingItems
-import androidx.paging.compose.items
 import com.tiffany.salazar.laboratorio8.viewmodel.HomeViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -68,17 +68,17 @@ fun HomeScreen(
                     .padding(16.dp)
             )
 
-            // Lista de búsquedas recientes
+            // Lista de búsquedas recientes - VERSIÓN SIMPLIFICADA
             if (showRecentQueries && recentQueries.isNotEmpty()) {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
                 ) {
-                    LazyColumn(
+                    Column(
                         modifier = Modifier.heightIn(max = 200.dp)
                     ) {
-                        items(recentQueries) { recentQuery ->
+                        recentQueries.forEach { recentQuery ->
                             Text(
                                 text = recentQuery,
                                 modifier = Modifier
