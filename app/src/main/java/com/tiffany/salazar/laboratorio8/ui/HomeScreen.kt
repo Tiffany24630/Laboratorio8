@@ -3,10 +3,8 @@ package com.tiffany.salazar.laboratorio8.ui
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -28,7 +26,6 @@ fun HomeScreen(
     val query by viewModel.query.collectAsState()
     val photos = viewModel.photos.collectAsLazyPagingItems()
     val recentQueries by viewModel.recentQueries.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
     var showRecentQueries by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -100,18 +97,6 @@ fun HomeScreen(
                 Spacer(modifier = Modifier.height(8.dp))
             }
 
-            // Loading indicator
-            if (isLoading) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
-            }
-
             // Grid de fotos
             if (photos.itemCount > 0) {
                 PhotoGrid(
@@ -121,7 +106,7 @@ fun HomeScreen(
                         // El toggle se maneja en el ViewModel
                     }
                 )
-            } else if (query.isNotEmpty() && !isLoading) {
+            } else if (query.isNotEmpty()) {
                 // Estado vacío
                 Box(
                     modifier = Modifier

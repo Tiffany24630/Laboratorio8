@@ -21,8 +21,8 @@ import com.tiffany.salazar.laboratorio8.ui.HomeScreen
 import com.tiffany.salazar.laboratorio8.ui.theme.Laboratorio8Theme
 import com.tiffany.salazar.laboratorio8.viewmodel.DetailsViewModel
 import com.tiffany.salazar.laboratorio8.viewmodel.HomeViewModel
-import com.tiffany.salazar.laboratorio8.viewmodel.DetailsViewModelFactory
 import com.tiffany.salazar.laboratorio8.viewmodel.HomeViewModelFactory
+import com.tiffany.salazar.laboratorio8.viewmodel.DetailsViewModelFactory
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -72,7 +72,10 @@ fun AppNavigation() {
                     photoId
                 )
             )
-            DetailsScreen(viewModel = detailsViewModel)
+            DetailsScreen(
+                viewModel = detailsViewModel,
+                onBack = { navController.popBackStack() }
+            )
         }
     }
 }

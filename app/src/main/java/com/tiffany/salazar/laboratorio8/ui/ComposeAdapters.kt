@@ -56,7 +56,7 @@ fun PhotoCard(
     ) {
         Box {
             AsyncImage(
-                model = photo.url,
+                model = photo.thumbUrl,
                 contentDescription = photo.author,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
