@@ -59,7 +59,7 @@ fun AppNavigation() {
                     navController.navigate("details/$photoId")
                 },
                 onProfileClick = {
-                    // Navegar a perfil (pendiente de implementar)
+
                 }
             )
         }
