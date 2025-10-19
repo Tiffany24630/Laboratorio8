@@ -68,7 +68,7 @@ fun HomeScreen(
                     .padding(16.dp)
             )
 
-            // Lista de búsquedas recientes - VERSIÓN SIMPLIFICADA
+            // Lista de búsquedas recientes
             if (showRecentQueries && recentQueries.isNotEmpty()) {
                 Card(
                     modifier = Modifier
@@ -103,7 +103,7 @@ fun HomeScreen(
                     items = photos,
                     onPhotoClick = onPhotoClick,
                     onToggleFavorite = { photo ->
-                        // El toggle se maneja en el ViewModel
+                        viewModel.toggleFavorite(photo)
                     }
                 )
             } else if (query.isNotEmpty()) {
@@ -116,6 +116,19 @@ fun HomeScreen(
                 ) {
                     Text(
                         text = "No se encontraron fotos para \"$query\"",
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Ingresa un término de búsqueda para comenzar",
                         textAlign = TextAlign.Center,
                         style = MaterialTheme.typography.bodyMedium
                     )

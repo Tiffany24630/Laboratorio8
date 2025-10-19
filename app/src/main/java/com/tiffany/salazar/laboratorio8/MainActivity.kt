@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -45,11 +46,12 @@ class MainActivity : ComponentActivity() {
 fun AppNavigation() {
     val navController = rememberNavController()
     val context = LocalContext.current
+    val repository = remember { ServiceLocator.provideRepository(context) }
 
     NavHost(navController = navController, startDestination = "home") {
         composable("home") {
             val homeViewModel: HomeViewModel = viewModel(
-                factory = HomeViewModelFactory(ServiceLocator.provideRepository(context))
+                factory = HomeViewModelFactory(repository)
             )
             HomeScreen(
                 viewModel = homeViewModel,
@@ -67,10 +69,7 @@ fun AppNavigation() {
         ) { backStackEntry ->
             val photoId = backStackEntry.arguments?.getString("photoId") ?: ""
             val detailsViewModel: DetailsViewModel = viewModel(
-                factory = DetailsViewModelFactory(
-                    ServiceLocator.provideRepository(context),
-                    photoId
-                )
+                factory = DetailsViewModelFactory(repository, photoId)
             )
             DetailsScreen(
                 viewModel = detailsViewModel,
