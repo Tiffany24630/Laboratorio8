@@ -8,15 +8,17 @@ import retrofit2.http.Query
 interface PhotoApi {
     @GET("v1/search")
     suspend fun searchPhotos(
+        @Header("Authorization") apiKey: String,
         @Query("query") query: String,
         @Query("page") page: Int,
-        @Query("per_page") perPage: Int = 30
+        @Query("per_page") perPage: Int = 20
     ): PexelsSearchResponse
 
     @GET("v1/curated")
     suspend fun getPopularPhotos(
+        @Header("Authorization") apiKey: String,
         @Query("page") page: Int,
-        @Query("per_page") perPage: Int = 30
+        @Query("per_page") perPage: Int = 20
     ): PexelsSearchResponse
 }
 
